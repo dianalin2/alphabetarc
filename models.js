@@ -48,7 +48,7 @@ const VerificationLinkSchema = new mongoose.Schema({
         type: Date,
         default: Date.now,
         required: true,
-    },
+    }
 });
 
 const VerificationLink = mongoose.model("VerificationLink", VerificationLinkSchema);

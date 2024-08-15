@@ -8,7 +8,7 @@
 </head>
 
 <body>
-    <form method="POST">
+    <form method="POST" id="register">
         <label for="email">Email</label>
         <input type="email" id="email" name="email" required>
         <label for="password">Password</label>
@@ -16,8 +16,16 @@
         <button type="submit">Login</button>
     </form>
 
+    <form method="POST" id="verify" style="display: none;">
+        <label for="token">Token</label>
+        <input type="text" id="token" name="token" required>
+        <button type="submit">Verify</button>
+    </form>
+
     <script>
-        const form = document.querySelector('form');
+        const form = document.getElementById('register');
+        const verify = document.getElementById('verify');
+
         form.addEventListener('submit', async (event) => {
             event.preventDefault();
             const response = await fetch('/api/v1/user/new', {
@@ -32,6 +40,34 @@
             });
             const body = await response.text();
             console.log(body);
+
+            if (response.status !== 200) {
+                alert(body);
+                return;
+            }
+
+            verify.style.display = 'block';
+            form.style.display = 'none';
+        });
+
+        verify.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const token = verify.token.value;
+            const response = await fetch('/api/v1/user/verify', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    token
+                })
+            });
+
+            if (response.status === 200) {
+                window.location = '/';
+            } else {
+                alert('Invalid token');
+            }
         });
     </script>
 </body>

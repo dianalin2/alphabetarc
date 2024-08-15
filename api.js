@@ -1,14 +1,11 @@
-import postmark from "postmark";
 import { Router, json } from "express";
 import { Newsletter, User, VerificationLink } from "./models.js";
 import jwt from "jsonwebtoken";
+import { sendEmail } from "./email.js";
 
 const router = Router();
 
 router.use(json());
-
-const postmarkEmail = process.env.POSTMARK_EMAIL;
-const postmarkClient = new postmark.ServerClient(process.env.POSTMARK_SERVER_API_TOKEN);
 
 const jwtSecret = process.env.JWT_SECRET;
 
@@ -67,13 +64,13 @@ router.post("/user/new", async (req, res) => {
 
     await verification.save();
 
-    postmarkClient.sendEmail({
-        From: postmarkEmail,
-        To: email,
-        Subject: "Welcome!",
-        TextBody: "Welcome to Alphabetarc! Please verify your email address with this verification token: " + verification.token,
-    }).then((response) => {
-        console.log("Email sent", response.To);
+    sendEmail(
+        "Alphabetarc",
+        email,
+        "Welcome!",
+        "Welcome to Alphabetarc! Please verify your email address with this verification token: " + verification.token
+    ).then((response) => {
+        console.log("Email sent", response);
     });
 
     res.json({
@@ -81,18 +78,26 @@ router.post("/user/new", async (req, res) => {
     });
 });
 
-router.post("/user/verify", (req, res) => {
+router.post("/user/verify", async (req, res) => {
     const { token } = req.body;
 
-    VerificationLink.findOne({ token }).then((doc) => {
-        if (!doc)
-            return res.status(401).json({ message: "Invalid token" });
+    // print all verification links
 
-        User.findById(doc.user).then((doc) => {
-            doc.verified = true;
-            doc.save();
-        });
-    });
+    const doc = await VerificationLink.findOne({ token });
+
+    if (!doc)
+        return res.status(401).json({ message: "Invalid token" });
+
+    const user = await User.findById(doc.user);
+
+    if (!user)
+        return res.status(401).json({ message: "User not found" });
+
+    if (user.verified)
+        return res.status(401).json({ message: "Email already verified" });
+
+    user.verified = true;
+    await user.save();
 
     res.json({ message: "Email verified" });
 });
@@ -139,13 +144,13 @@ router.post("/newsletter/new", verifyJWT, isVerified, (req, res) => {
     }
 
     for (const subscriber of subscribers) {
-        postmarkClient.sendEmail({
-            From: postmarkEmail,
-            To: subscriber,
-            Subject: title,
-            TextBody: description,
+        sendEmail({
+            from: postmarkEmail,
+            to: subscriber,
+            subject: title,
+            text: description,
         }).then((response) => {
-            console.log("Newsletter verification sent: ", response.To);
+            console.log("Newsletter verification sent: ", response);
         });
     }
 
