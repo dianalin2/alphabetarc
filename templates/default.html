@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }}</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Halant:wght@300;400;500;600;700&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap"
+        rel="stylesheet">
+
+    <style>
+        body {
+            font-family: "Poppins", sans-serif;
+            margin: 0;
+        }
+
+        main {
+            display: flex;
+            justify-content: center;
+            height: 100vh;
+            background-color: #FFEEDD;
+        }
+
+        #issue {
+            display: block;
+            text-align: center;
+            font-size: 1.25em;
+            font-weight: bold;
+            text-transform: uppercase;
+            color: #1C00B8;
+        }
+
+        #middle {
+            margin: 0 auto;
+            width: 800px;
+            max-width: 100%;
+            background-color: #F8F7FF;
+            height: 100%;
+        }
+
+        #content {
+            padding: 2em;
+        }
+
+        .question {
+            font-size: 1.5em;
+            font-weight: bold;
+            margin-bottom: 1em;
+            text-transform: uppercase;
+            color: #1C00B8;
+        }
+
+        h1 {
+            font-size: 2em;
+            font-weight: bold;
+            text-align: center;
+        }
+    </style>
+</head>
+
+<body>
+    <main>
+        <div id="middle">
+            <div id="content">
+                <div id="header">
+                    <h1>{{ title }}</h1>
+                    <span id="issue">Issue #{{ issueNumber }}</span>
+                </div>
+
+                {{ #each questions }}
+                <div>
+                    <div class="question">{{ this.question }}</div>
+                    {{ #each this.answers }}
+                    <p><span style='font-weight: bold'>{{ this.user.nickname }}</span>: {{ this.answer }} </p>
+                    {{ /each }}
+                </div>
+                {{ /each }}
+            </div>
+        </div>
+    </main>
+</body>
+
+</html>

@@ -28,8 +28,21 @@ userSchema.pre("save", function (next) {
         return next();
 
     this.password = bcrypt.hashSync(this.password, 10);
+    console.log(this);
     next();
 });
+
+userSchema.statics.findByLogin = async function ({ email, password }) {
+    const user = await this.findOne({ email });
+
+    if (!user)
+        return null;
+
+    if (bcrypt.compareSync(password, user.password))
+        return user;
+
+    return null;
+};
 
 const User = mongoose.model("User", userSchema);
 
@@ -101,6 +114,16 @@ const NewsletterInviteSchema = new mongoose.Schema({
     },
 });
 
+const NewsletterSubscriberSchema = new mongoose.Schema({
+    email: { type: String, required: true },
+    nickname: { type: String, required: true },
+    newsletter: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Newsletter",
+        required: true,
+    }
+});
+
 const newsletterSchema = new mongoose.Schema({
     admins: [{
         type: mongoose.Schema.Types.ObjectId,
@@ -112,7 +135,7 @@ const newsletterSchema = new mongoose.Schema({
         default: [],
     },
     subscribers: {
-        type: [String],
+        type: [NewsletterSubscriberSchema],
         required: true,
         default: [],
     },

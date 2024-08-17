@@ -1,7 +1,13 @@
 {
   "name": "alphabetarc",
   "module": "index.js",
-  "type": "module",
+  "type": "commonjs",
+  "scripts": {
+    "start": "bun run index.js",
+    "build": "bun preact build --src client/src --dest client/build",
+    "watch:client": "bun preact watch --src client/src",
+    "watch:server": "bun run index.js --watch"
+  },
   "devDependencies": {
     "@types/bun": "latest"
   },
@@ -13,8 +19,11 @@
     "dotenv": "^16.4.5",
     "ejs": "^3.1.10",
     "express": "^4.19.2",
+    "handlebars": "^4.7.8",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.4.0",
-    "nodemailer": "^6.9.14"
+    "nodemailer": "^6.9.14",
+    "preact": "^10.23.2",
+    "preact-router": "^4.1.2"
   }
 }

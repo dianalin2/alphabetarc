@@ -1,7 +1,7 @@
 import { Router, json } from "express";
 import { Newsletter, User, VerificationLink } from "./models.js";
 import jwt from "jsonwebtoken";
-import { sendEmail } from "./email.js";
+import { sendServerEmail } from "./email.js";
 
 const router = Router();
 
@@ -24,54 +24,69 @@ function verifyJWT(req, res, next) {
 function isVerified(req, res, next) {
     const { email } = req.user;
 
-    User.findOne({ email }).then((doc) => {
-        if (!doc.verified)
-            return res.status(401).json({ message: "Email not verified" });
+    const user = User.findOne({ email });
 
-        next();
-    });
+    if (!user)
+        return res.status(401).json({ message: "User not found" });
+
+    if (!user.verified)
+        return res.status(401).json({ message: "Email not verified" });
+
+    next();
 }
 
-router.post("/newsletter/:newsletterId/subscribe", (req, res) => {
+router.post("/newsletter/:newsletterId/subscribe", async (req, res) => {
     const { newsletterId } = req.params;
     const { token } = req.body;
 
-    Newsletter.findById(newsletterId).then((doc) => {
-        const invitedSubscriber = doc.invitedSubscribers.find((invited) => invited.token === token && invited.email === req.body.email);
-        if (!invitedSubscriber)
-            return res.status(401).json({ message: "Invalid token" });
+    const newsletter = await Newsletter.findById(newsletterId)
 
-        doc.subscribers.push(invitedSubscriber.email);
-        doc.invitedSubscribers = doc.invitedSubscribers.filter((invited) => invited.email !== req.body.email);
-        doc.save().then((doc) => {
-            res.json(doc);
-        });
-    });
+    const invitedSubscriber = newsletter.invitedSubscribers.find((invited) => invited.token === token);
+    if (!invitedSubscriber)
+        return res.status(401).json({ message: "Invalid token" });
+
+    newsletter.subscribers.push(invitedSubscriber.email);
+    newsletter.invitedSubscribers = newsletter.invitedSubscribers.filter((invited) => invited.token !== token);
+
+    await newsletter.save();
+
+    res.json(newsletter);
 });
 
 router.post("/user/new", async (req, res) => {
     const { email, password } = req.body;
-    const user = new User({
-        email,
-        password,
-    });
 
-    await user.save();
+    try {
+        const user = new User({
+            email,
+            password,
+        });
 
-    const verification = new VerificationLink({
-        user: user._id,
-    });
+        await user.save();
+    } catch (err) {
+        console.error(err);
+        return res.status(400).json({ message: 'Email already in use' });
+    }
 
-    await verification.save();
+    try {
+        const verification = new VerificationLink({
+            user: user._id,
+        });
 
-    sendEmail(
+        await verification.save();
+    } catch (err) {
+        console.error(err);
+        return res.status(500).json({ message: 'Error creating verification link' });
+    }
+
+    const emailRes = await sendServerEmail(
         "Alphabetarc",
         email,
         "Welcome!",
         "Welcome to Alphabetarc! Please verify your email address with this verification token: " + verification.token
-    ).then((response) => {
-        console.log("Email sent", response);
-    });
+    );
+
+    console.log("Email sent", emailRes);
 
     res.json({
         message: "User created",
@@ -80,8 +95,6 @@ router.post("/user/new", async (req, res) => {
 
 router.post("/user/verify", async (req, res) => {
     const { token } = req.body;
-
-    // print all verification links
 
     const doc = await VerificationLink.findOne({ token });
 
@@ -96,30 +109,36 @@ router.post("/user/verify", async (req, res) => {
     if (user.verified)
         return res.status(401).json({ message: "Email already verified" });
 
-    user.verified = true;
-    await user.save();
+    try {
+        user.verified = true;
+        await user.save();
+    } catch (err) {
+        console.error(err);
+        return res.status(500).json({ message: "Error verifying email" });
+    }
 
     res.json({ message: "Email verified" });
 });
 
-router.post("/user/token", (req, res) => {
+router.post("/user/token", async (req, res) => {
     const { email, password } = req.body;
 
-    const user =
-        User.findOne({ email, password }).then((doc) => {
-            if (!doc)
-                return res.status(401).json({ message: "Invalid email or password" });
+    const user = await User.findByLogin({ email, password });
 
-            const token = jwt.sign({ email }, jwtSecret);
-            res.json({ token });
-        });
+    console.log(user);
 
     if (!user)
         return res.status(401).json({ message: "Invalid email or password" });
+
+    if (!user.verified)
+        return res.status(401).json({ message: "Email not verified" });
+
+    const token = jwt.sign({ email }, jwtSecret);
+    res.json({ token });
 });
 
 
-router.post("/newsletter/new", verifyJWT, isVerified, (req, res) => {
+router.post("/newsletter/new", verifyJWT, isVerified, async (req, res) => {
     const { admins, subscribers, title, description, content } = req.body;
 
     const newsletter = new Newsletter({
@@ -132,26 +151,23 @@ router.post("/newsletter/new", verifyJWT, isVerified, (req, res) => {
         date: new Date(),
     });
 
-    newsletter.save().then((doc) => {
-        res.json(doc);
-    });
+    await newsletter.save();
 
     for (const admin of admins) {
-        User.findById(admin).then((doc) => {
-            doc.newsletters.push(newsletter._id);
-            doc.save();
-        });
+        const adminUser = await User.findById(admin);
+        adminUser.newsletters.push(newsletter._id);
+        await adminUser.save();
     }
 
     for (const subscriber of subscribers) {
-        sendEmail({
+        const res = await sendServerEmail({
             from: postmarkEmail,
             to: subscriber,
             subject: title,
             text: description,
-        }).then((response) => {
-            console.log("Newsletter verification sent: ", response);
         });
+
+        console.log("Newsletter verification sent: ", res);
     }
 
     res.json(newsletter);
