@@ -3,16 +3,11 @@ import { Component } from 'preact';
 export default class Login extends Component {
     constructor() {
         super();
-        this.handleSubmit = this.handleSubmit.bind(this);
+        this.handleLogin = this.handleLogin.bind(this);
         this.onLogin = this.onLogin.bind(this);
     }
 
-    onLogin(token) {
-        localStorage.setItem('token', token);
-        window.location = '/';
-    }
-
-    async handleSubmit(event) {
+    async handleLogin(event) {
         event.preventDefault();
         const response = await fetch('/api/v1/user/token', {
             method: 'POST',
@@ -34,10 +29,15 @@ export default class Login extends Component {
         }
     }
 
+    onLogin(token) {
+        localStorage.setItem('token', token);
+        window.location = '/';
+    }
+
     render() {
         return (
             <div>
-                <form onSubmit={this.handleSubmit}>
+                <form onSubmit={this.handleSubmit} key="login">
                     <label for="email">Email</label>
                     <input type="email" id="email" name="email" required />
                     <br />

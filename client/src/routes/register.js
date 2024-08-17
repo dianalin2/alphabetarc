@@ -5,9 +5,9 @@ export default class Login extends Component {
         super();
         this.handleRegister = this.handleRegister.bind(this);
         this.handleVerify = this.handleVerify.bind(this);
-        this.state = {
-            showVerify: false
-        }
+        this.handleLogin = this.handleLogin.bind(this);
+        this.onLogin = this.onLogin.bind(this);
+        this.state = { showVerify: false };
     }
 
     async handleRegister(event) {
@@ -26,7 +26,7 @@ export default class Login extends Component {
         const body = await response.json();
 
         if (response.status === 200) {
-            this.setState({ showVerify: true });
+            this.setState({ showVerify: true, email: event.target.email.value, password: event.target.password.value });
         } else {
             alert(body.message);
         }
@@ -47,15 +47,41 @@ export default class Login extends Component {
         const body = await response.json();
 
         if (response.status === 200) {
-            window.location = '/login';
+            this.handleLogin(this.state.email, this.state.password);
         } else {
             alert(body.message);
         }
     }
 
+    async handleLogin(email, password) {
+        const response = await fetch('/api/v1/user/token', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                email: email,
+                password: password
+            })
+        });
+
+        const body = await response.json();
+
+        if (response.status === 200) {
+            this.onLogin(body.token);
+        } else {
+            alert(body.message);
+        }
+    }
+
+    onLogin(token) {
+        localStorage.setItem('token', token);
+        window.location = '/';
+    }
+
     render() {
         const form = this.state.showVerify ? (
-            <form onSubmit={this.handleVerify}>
+            <form onSubmit={this.handleVerify} key="verify">
                 <span>
                     Please check your email for a verification token.
                 </span>
@@ -65,7 +91,7 @@ export default class Login extends Component {
                 <button type="submit">Verify</button>
             </form>
         ) : (
-            <form onSubmit={this.handleRegister}>
+            <form onSubmit={this.handleRegister} key="register">
                 <label for="email">Email</label>
                 <input type="email" id="email" name="email" key="email" required />
                 <br />
