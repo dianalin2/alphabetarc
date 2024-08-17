@@ -9,7 +9,8 @@
     "watch:server": "bun run index.js --watch"
   },
   "devDependencies": {
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "preact-cli": "^3.5.1"
   },
   "peerDependencies": {
     "typescript": "^5.0.0"

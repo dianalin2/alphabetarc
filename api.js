@@ -63,34 +63,29 @@ router.post("/user/new", async (req, res) => {
         });
 
         await user.save();
-    } catch (err) {
-        console.error(err);
-        return res.status(400).json({ message: 'Email already in use' });
-    }
 
-    try {
         const verification = new VerificationLink({
             user: user._id,
         });
 
         await verification.save();
+
+        const emailRes = await sendServerEmail(
+            "Alphabetarc",
+            email,
+            "Welcome!",
+            "Welcome to Alphabetarc! Please verify your email address with this verification token: " + verification.token
+        );
+
+        console.log("Email sent", emailRes);
+
+        res.json({
+            message: "User created",
+        });
     } catch (err) {
         console.error(err);
-        return res.status(500).json({ message: 'Error creating verification link' });
+        return res.status(400).json({ message: 'Email already in use' });
     }
-
-    const emailRes = await sendServerEmail(
-        "Alphabetarc",
-        email,
-        "Welcome!",
-        "Welcome to Alphabetarc! Please verify your email address with this verification token: " + verification.token
-    );
-
-    console.log("Email sent", emailRes);
-
-    res.json({
-        message: "User created",
-    });
 });
 
 router.post("/user/verify", async (req, res) => {
