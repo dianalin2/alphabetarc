@@ -81,7 +81,7 @@ export default class Login extends Component {
 
     render() {
         const form = this.state.showVerify ? (
-            <form onSubmit={this.handleVerify} key="verify">
+            <form onSubmit={this.handleVerify}>
                 <span>
                     Please check your email for a verification token.
                 </span>
@@ -91,7 +91,7 @@ export default class Login extends Component {
                 <button type="submit">Verify</button>
             </form>
         ) : (
-            <form onSubmit={this.handleRegister} key="register">
+            <form onSubmit={this.handleRegister}>
                 <label for="email">Email</label>
                 <input type="email" id="email" name="email" key="email" required />
                 <br />
