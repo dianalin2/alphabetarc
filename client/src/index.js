@@ -6,7 +6,18 @@ import Router from 'preact-router';
 import Home from './routes/home';
 import Login from './routes/login';
 import Register from './routes/register';
+import NewsletterNew from './routes/newsletter-new';
 import Nav from './components/nav';
+
+class ProtectedRoute extends Component {
+    render() {
+        if (localStorage.getItem('token')) {
+            return this.props.component;
+        } else {
+            return <Login />;
+        }
+    }
+}
 
 export default class App extends Component {
     constructor() {
@@ -19,10 +30,12 @@ export default class App extends Component {
             { name: 'Home', path: '/', component: Home },
             { name: 'Login', path: '/login', component: Login },
             { name: 'Register', path: '/register', component: Register },
+            { name: 'Create Newsletter', path: '/newsletter/new', component: ProtectedRoute, props: { component: <NewsletterNew /> } },
         ];
 
         const loggedInPaths = [
             { name: 'Home', path: '/', component: Home },
+            { name: 'Create Newsletter', path: '/newsletter/new', component: ProtectedRoute, props: { component: <NewsletterNew /> } },
         ];
 
         const loggedOutPaths = [
@@ -37,7 +50,7 @@ export default class App extends Component {
                 <Router>
                     {
                         paths.map((path) => (
-                            <path.component path={path.path} />
+                            <path.component path={path.path} {...path.props} />
                         ))
                     }
                 </Router>

@@ -1,8 +1,11 @@
 import express from "express";
 import dotenv from "dotenv";
 import apiRouter from "./api.js";
+import startNewsletterProcessing from "./newsletter-send.js";
 
 dotenv.config();
+
+startNewsletterProcessing();
 
 const app = express();
 

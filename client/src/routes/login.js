@@ -37,7 +37,7 @@ export default class Login extends Component {
     render() {
         return (
             <div>
-                <form onSubmit={this.handleSubmit} key="login">
+                <form onSubmit={this.handleLogin} key="login">
                     <label for="email">Email</label>
                     <input type="email" id="email" name="email" required />
                     <br />

@@ -1,6 +1,7 @@
 import nodemailer from "nodemailer";
 import fs from "fs";
 import Handlebars from "handlebars";
+import path from "path";
 
 const EMAIL_ADDRESS = process.env.EMAIL_ADDRESS;
 const EMAIL_HOST = process.env.EMAIL_HOST;
@@ -45,4 +46,40 @@ function sendServerEmail(from, to, subject, text) {
     }));
 }
 
-export { sendServerEmail };
+function newsletterIssueToText(newsletter) {
+    return `${newsletter.title}, Issue ${newsletter.issues.length}\n\n` +
+        newsletter.issues[newsletter.issues.length - 1].questions.map((question, index) =>
+            `${index + 1}. ${question.question}\n`
+                `   ${question.answers.map((answer) => `${answer.subscriber.nickname}: ${answer.answer}`).join('\n')}`
+        ).join('\n');
+}
+
+function sendNewsletterIssue(newsletter, issue) {
+    const emailTemplate = Handlebars.compile(fs.readFileSync(path.join('templates', newsletter.template), 'utf8'));
+    const textNewsletterIssue = newsletterIssueToText(newsletter);
+
+    const issueNumber = newsletter.issues.filter((issue) => issue.sent).length + 1;
+
+    const renderedNewsletterIssue = emailTemplate({
+        title: newsletter.title,
+        issueNumber: issueNumber,
+        questions: issue.questions,
+    });
+
+    for (const subscriber of newsletter.subscribers) {
+        if (subscriber.startSubscribe > Date.now())
+            continue;
+        if (subscriber.endSubscribe && subscriber.endSubscribe < Date.now())
+            continue;
+
+        sendEmail(
+            newsletter.title,
+            subscriber.email,
+            `newsletter.title, Issue ${newsletter.issues.length}`,
+            textNewsletterIssue,
+            renderedNewsletterIssue
+        );
+    }
+}
+
+export { sendServerEmail, sendNewsletterIssue };

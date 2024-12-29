@@ -24,34 +24,16 @@ function verifyJWT(req, res, next) {
 function isVerified(req, res, next) {
     const { email } = req.user;
 
-    const user = User.findOne({ email });
+    const user = User.findOne({ email }).then((user) => {
+        if (!user)
+            return res.status(401).json({ message: "User not found" });
 
-    if (!user)
-        return res.status(401).json({ message: "User not found" });
+        if (!user.verified)
+            return res.status(401).json({ message: "Email not verified" });
 
-    if (!user.verified)
-        return res.status(401).json({ message: "Email not verified" });
-
-    next();
+        next();
+    });
 }
-
-router.post("/newsletter/:newsletterId/subscribe", async (req, res) => {
-    const { newsletterId } = req.params;
-    const { token } = req.body;
-
-    const newsletter = await Newsletter.findById(newsletterId)
-
-    const invitedSubscriber = newsletter.invitedSubscribers.find((invited) => invited.token === token);
-    if (!invitedSubscriber)
-        return res.status(401).json({ message: "Invalid token" });
-
-    newsletter.subscribers.push(invitedSubscriber.email);
-    newsletter.invitedSubscribers = newsletter.invitedSubscribers.filter((invited) => invited.token !== token);
-
-    await newsletter.save();
-
-    res.json(newsletter);
-});
 
 router.post("/user/new", async (req, res) => {
     const { email, password } = req.body;
@@ -134,38 +116,85 @@ router.post("/user/token", async (req, res) => {
 
 
 router.post("/newsletter/new", verifyJWT, isVerified, async (req, res) => {
-    const { admins, subscribers, title, description, content } = req.body;
+    const { admins, invitedSubscriberEmails, frequency, questionMakingTime, title, description, startDate } = req.body;
 
-    const newsletter = new Newsletter({
-        admins,
-        invitedSubscribers: subscribers,
-        subscribers: [],
-        title,
-        description,
-        content,
-        date: new Date(),
-    });
+    console.log(req.body);
+
+    try {
+        const newsletter = new Newsletter({
+            admins: [],
+            invitedSubscribers: [],
+            subscribers: [],
+            frequency,
+            questionMakingTime,
+            title,
+            description,
+            issues: [],
+            startDate: new Date(startDate),
+        });
+
+        await newsletter.save();
+
+        for (const admin of admins) {
+            const adminUser = await User.findById(admin);
+
+            adminUser.newsletters.push(newsletter._id);
+            await adminUser.save();
+
+            newsletter.admins.push(adminUser._id);
+            await newsletter.save();
+        }
+
+        for (const invitedSubscriberEmail of invitedSubscriberEmails) {
+            newsletter.invitedSubscribers.push({
+                email: invitedSubscriberEmail,
+                newsletter: newsletter._id,
+            });
+
+            await newsletter.save();
+        }
+
+        for (const invitedSubscriber of newsletter.invitedSubscribers) {
+            await sendServerEmail(
+                "Alphabetarc",
+                invitedSubscriber.email,
+                `${title} Subscription Invitation`,
+                `You have been invited to subscribe to the newsletter ${title}! Please verify your email address with this verification token: ${invitedSubscriber.token}`
+            );
+        }
+
+        await newsletter.save();
+
+        for (const admin of admins) {
+            const adminUser = await User.findById(admin);
+            adminUser.newsletters.push(newsletter._id);
+            await adminUser.save();
+        }
+
+        res.json(newsletter);
+    } catch (err) {
+        console.error(err);
+        return res.status(500).json({ message: "Error creating newsletter" });
+    }
+});
+
+router.post("/newsletter/:newsletterId/subscribe", async (req, res) => {
+    const { newsletterId } = req.params;
+    const { token } = req.body;
+
+    const newsletter = await Newsletter.findById(newsletterId);
+
+    const invitedSubscriber = newsletter.invitedSubscribers.find((invited) => invited.token === token);
+    if (!invitedSubscriber)
+        return res.status(401).json({ message: "Invalid token" });
+
+    newsletter.subscribers.push(invitedSubscriber.email);
+    newsletter.invitedSubscribers = newsletter.invitedSubscribers.filter((invited) => invited.token !== token);
 
     await newsletter.save();
 
-    for (const admin of admins) {
-        const adminUser = await User.findById(admin);
-        adminUser.newsletters.push(newsletter._id);
-        await adminUser.save();
-    }
-
-    for (const subscriber of subscribers) {
-        const res = await sendServerEmail({
-            from: postmarkEmail,
-            to: subscriber,
-            subject: title,
-            text: description,
-        });
-
-        console.log("Newsletter verification sent: ", res);
-    }
-
     res.json(newsletter);
 });
+
 
 export default router;

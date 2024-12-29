@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 import bcrypt from "bcrypt";
 
-mongoose.connect(process.env.MONGODB_URI);
+await mongoose.connect(process.env.MONGODB_URI);
 
 const userSchema = new mongoose.Schema({
     email: { type: String, unique: true, required: true },
@@ -68,9 +68,9 @@ const VerificationLink = mongoose.model("VerificationLink", VerificationLinkSche
 
 const AnswerSchema = new mongoose.Schema({
     answer: { type: String, required: true },
-    user: {
+    subscriber: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "User",
+        ref: "Subscriber",
         required: true,
     },
 });
@@ -90,10 +90,19 @@ const IssueSchema = new mongoose.Schema({
         required: true,
         default: [],
     },
+    questionMakingEndDate: {
+        type: Date,
+        required: true,
+    },
     date: {
         type: Date,
         default: Date.now,
     },
+    sent: {
+        type: Boolean,
+        required: true,
+        default: false,
+    }
 });
 
 const NewsletterInviteSchema = new mongoose.Schema({
@@ -117,12 +126,16 @@ const NewsletterInviteSchema = new mongoose.Schema({
 const NewsletterSubscriberSchema = new mongoose.Schema({
     email: { type: String, required: true },
     nickname: { type: String, required: true },
+    startSubscribe: { type: Date, default: Date.now, required: true },
+    endSubscribe: { type: Date },
     newsletter: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "Newsletter",
         required: true,
-    }
+    },
 });
+
+const NewsletterSubscriber = mongoose.model("NewsletterSubscriber", NewsletterSubscriberSchema);
 
 const newsletterSchema = new mongoose.Schema({
     admins: [{
@@ -134,11 +147,13 @@ const newsletterSchema = new mongoose.Schema({
         required: true,
         default: [],
     },
-    subscribers: {
-        type: [NewsletterSubscriberSchema],
-        required: true,
-        default: [],
-    },
+    subscribers: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "NewsletterSubscriber",
+    }],
+    frequency: { type: Number, required: true, default: 1000 * 60 * 60 * 24 * 7 * 4 },
+    questionMakingTime: { type: Number, required: true, default: 1000 * 60 * 60 * 24 * 2 },
+    templatePath: { type: String, required: true, default: "default.html" },
     title: { type: String, required: true, default: "Newsletter" },
     description: { type: String, required: true, default: "Our group newsletter..." },
     issues: [IssueSchema],
@@ -150,4 +165,4 @@ const newsletterSchema = new mongoose.Schema({
 
 const Newsletter = mongoose.model("Newsletter", newsletterSchema);
 
-export { User, VerificationLink, Newsletter };
+export { User, VerificationLink, Newsletter, NewsletterSubscriber };

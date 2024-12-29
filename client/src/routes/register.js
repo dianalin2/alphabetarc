@@ -1,6 +1,6 @@
 import { Component } from 'preact';
 
-export default class Login extends Component {
+export default class Register extends Component {
     constructor() {
         super();
         this.handleRegister = this.handleRegister.bind(this);
